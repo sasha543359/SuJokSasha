@@ -1,0 +1,11 @@
+﻿@inject NavigationManager NavManager
+
+@code {
+    protected override void OnInitialized()
+    {
+        if (NavManager.Uri.EndsWith("/"))
+        {
+            NavManager.NavigateTo("/calendar", true);
+        }
+    }
+}

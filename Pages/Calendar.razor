@@ -1,0 +1,123 @@
+﻿@page "/calendar"
+@using HeavenlyCalendar.Models
+@using HeavenlyCalendar.Services
+
+@inject HeavenlyCycleService CycleService
+
+<MudPaper Class="pa-4">
+    <MudText Typo="Typo.h5">Су Джок календарь</MudText>
+
+    <MudTextField @bind-Value="inputYear" Label="Введите год" Variant="Variant.Outlined" />
+    <MudButton OnClick="Generate" Color="Color.Primary" Class="mt-2">Считать</MudButton>
+
+    @if (calendarDays != null)
+    {
+        var (yearDesc, yearCode) = CycleService.GetYearCycle(inputYear);
+        <MudText Typo="Typo.h3" Align="Align.Center" Class="my-4">
+            Год @inputYear: @yearDesc (@yearCode)
+        </MudText>
+
+        <MudGrid>
+            @foreach (var month in Enumerable.Range(1, 12))
+            {
+                var (monthDesc, monthCode) = CycleService.GetMonthCycle(inputYear, month);
+
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Class="ma-2">
+                        <MudCardHeader>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @($"{GetMonthName(month)}: {monthDesc} ({monthCode})")
+                            </MudText>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <!-- Дни недели -->
+                            <MudGrid>
+                                @foreach (var dayName in new[] { "Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс" })
+                                {
+                                    <MudItem xs="1">
+                                        <MudText Typo="Typo.caption" Align="Align.Center">@dayName</MudText>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+
+                            <!-- Сетка дней -->
+                            <MudGrid>
+                                @foreach (var week in GetWeeksForMonth(inputYear, month))
+                                {
+                                    <MudItem xs="12">
+                                        <MudGrid>
+                                            @foreach (var day in week)
+                                            {
+                                                <MudItem xs="1">
+                                                    <MudPaper Style="@($"background-color:{GetColor(day.Color)}")" Class="pa-1 text-center">
+                                                        @if (day.Date != DateTime.MinValue)
+                                                        {
+                                                            <MudText Typo="Typo.caption">@day.Date.Day</MudText>
+                                                            <MudText Typo="Typo.caption">@day.Code</MudText>
+                                                        }
+                                                    </MudPaper>
+                                                </MudItem>
+                                            }
+                                        </MudGrid>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudPaper>
+
+@code {
+    int inputYear = DateTime.Today.Year;
+    List<CalendarDay> calendarDays;
+
+    void Generate()
+    {
+        calendarDays = CycleService.GenerateYearCalendar(inputYear);
+    }
+
+    string GetMonthName(int month)
+    {
+        var culture = new System.Globalization.CultureInfo("ru-RU");
+        return new DateTime(2025, month, 1).ToString("MMMM", culture);
+    }
+    
+    List<List<CalendarDay>> GetWeeksForMonth(int year, int month)
+    {
+        var days = CycleService.GenerateMonthCalendar(year, month); // создаёт List<CalendarDay>
+        var weeks = new List<List<CalendarDay>>();
+        var week = new List<CalendarDay>();
+
+        var firstDay = new DateTime(year, month, 1);
+        int offset = ((int)firstDay.DayOfWeek + 6) % 7; // Пн = 0
+
+        for (int i = 0; i < offset; i++)
+            week.Add(new CalendarDay { Date = DateTime.MinValue, Code = "", Color = "empty" });
+
+        foreach (var day in days)
+        {
+            week.Add(day);
+            if (week.Count == 7)
+            {
+                weeks.Add(week);
+                week = new List<CalendarDay>();
+            }
+        }
+
+        if (week.Count > 0)
+            weeks.Add(week);
+
+        return weeks;
+    }
+    
+    string GetColor(string color) => color switch
+    {
+        "red" => "#ffcccc",
+        "yellow" => "#fff9c4",
+        "empty" => "#f5f5f5",
+        _ => "transparent"
+    };
+}
